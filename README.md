@@ -84,16 +84,19 @@ source setEnvironment.sh
 Since the connection to EMR is hardcoded in an S3 bucket, the redis load fails when running in EMR.  The rest of the Federated sources load successfully.  Run the following steps to load the nation and active_orders tables into Redis Enterprise
 * Use aws s3 cli to get the two needed data files
 ```bash
-./donwloadFiles.sh
+./downloadFiles.sh
 ```
 * transfer files to the redis instance
 ```bash
-scp -i <path to your private key> 
-*  2 data files using the load script
+scp -i <path to your private key>  loadscripts.sh ec2-user@<redisPublicIP>:/home/ec2-user
+scp -i <path to your private key>  data ec2-user@<redisPublicIP>:/home/ec2-user
+```
+*  load 2 data files using the load script
 ```bash
 sudo bash
 ./loadscripts.sh
 ```
+
 ### Continue with the workshop
 The [Labs - Athena Basics](https://athena-in-action.workshop.aws/30-basics.html) section does not use the Redis connector but does have the section on "Visualize with QuickSight".  The important part for the Redis Connector is [Labs - Federated Queries](https://athena-in-action.workshop.aws/40-federatedquery.html).  
 
