@@ -87,8 +87,11 @@ Since the connection to EMR is hardcoded in an S3 bucket, the redis load fails w
 ./donwloadFiles.sh
 ```
 * transfer files to the redis instance
-# load 2 data files and the load script to the  redis server
 ```bash
+scp -i <path to your private key> 
+*  2 data files using the load script
+```bash
+sudo bash
 ./loadscripts.sh
 ```
 ### Continue with the workshop
