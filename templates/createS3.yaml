@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Parameters:
+  S3BucketName:
+    Description: Used as the name for the staging S3 bucket. Can be up to 63 characters, lowercase letters (a-z) only.
+    Type: String
+    Default: s3bucketname
+    AllowedPattern: "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$"
+    ConstraintDescription: The S3 Bucket Name can be up to 63 characters, lowercase letters (a-z) only.
+Resources:
+  xyzlocals3:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    Properties:
+      BucketName:  !Sub '${S3BucketName}'
