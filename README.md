@@ -14,7 +14,6 @@ Demo integrating Redis Enterprise with Amazon Athena and Amazon QuickSight
 - [Technical Overview](#technical-overview)
 - [Instructions](#instructions)
   - [Create Environment](#create-environment)
-  - [Edit Security Group Settings](#edit-security-group-settings)
 - [Cleaning up](#cleaning-up)
 
 
@@ -42,6 +41,11 @@ Initially started with a CloudFormation template from [Amazon Athena Workship](h
 * Create S3 bucket using provided Cloudformation yaml file and script.   Optionally, can use existing S3 bucket
 * Bring up Athena Federated Query environment using provided scripts and cloud formation yaml files.
 * Run through federated query exercises
+* A parameter is provided to choose to bring up the full AWS federated query lab environment or only the resources needed for the redis athena query
+* The required DNS entries for Redis Enterprise are included in the cloudformation script
+* The RedisEnterprise EC2 resource uses the marketplace AMI with the Redis Enterprise Software pre-installed
+* This RE EC2 resource has UserData entries to create the Redis Cluster, create a redis database, and load a very small amount of sample redis data using the github after also installing git
+* The redis connector is also in a nested cloudformation script called *RedisConnector.yaml*.  This connector allows athena to access Redis.
 
 &nbsp;
 
@@ -61,15 +65,18 @@ Initially started with a CloudFormation template from [Amazon Athena Workship](h
 git clone https://github.com/jphaugla/redisAthenaQuickSight.git
 ```
 * Set up the environment file for use case
-Most of the current environment variable values will work for most use cases but careful consideration must be made for the DNS entries. The subsequent cloudformation scripts will set up DNS but a hosted zone name must be selected and put in to the environment script for this to be successful.  Careful consideration of the cluster name should also be made.   Use the following link for a full explanation of [AWS Route53 DNS management with Redis Enterprise](https://docs.redis.com/latest/rs/installing-upgrading/configuring/configuring-aws-route53-dns-redis-enterprise/) 
-Edit setEnvironment.sh file for your environment
+  * Most of the current environment variable values will work for most use cases but careful consideration must be made for the DNS entries. The subsequent cloudformation scripts will set up DNS but a hosted zone name must be selected and put in to the environment script for this to be successful.  Careful consideration of the cluster name should also be made.   Use the following link for a full explanation of [AWS Route53 DNS management with Redis Enterprise](https://docs.redis.com/latest/rs/installing-upgrading/configuring/configuring-aws-route53-dns-redis-enterprise/) 
+Edit setEnvironment.sh file for your environment.  Some notes on the setEnvironment script...
+  * The LocalIp is used to limit ssh access to AWS resources.  The AWS checkip URL is used.  If you want this wide open, comment out this line and replace with "0.0.0.0/0"
+  * A DNS hosted zone must be used for this cloudformation script to work because the additional DNS name space record and DNS Address record(s)
+ are added in this cloudformation script
 
 ### Create Environment
 * Some tips on creating an AWS account with [AWS Account instructions](https://athena-in-action.workshop.aws/20-howtostart/201-self-paced.html)
-* After reviewing  "Introduction" and "Getting Started", proceed to run the Athena Basic Stack from the workshop Template.
-* However, stop before running the "Labs Fedrated Queries, User DEined Functions, Custom Connector & Machine Learning".  Instead, use these steps:
+* After reviewing  "Introduction" and "Getting Started", proceed to run the Athena Basic Stack from the workshop Template.  This is not needed if only proving out the redis part.
+* However, stop before running the "Labs Federated Queries, User Defined Functions, Custom Connector & Machine Learning".  Instead, use these steps:
 ```bash
-#  sets up the envrionment
+#  sets up the environment
 source setEnvironment.sh
 # deploy an s3 bucket
 # this can be skipped if already have an S3 bucket to use
@@ -81,8 +88,8 @@ source setEnvironment.sh
 ```
 
 ### Fix data load to Redis
-Since the connection to EMR is hardcoded in an S3 bucket, the redis load fails when running in EMR.  The rest of the Federated sources load successfully.  Run the following steps to load the nation and active_orders tables into Redis Enterprise
-* Use aws s3 cli to get the two needed data files
+This is no longer necessary as this has been put into the userdata section of the Redis EC2 instance.  Since the connection to EMR is hardcoded in an S3 bucket, the redis load fails when running in EMR.  The rest of the Federated sources load successfully.  Run the following steps to load the nation and active_orders tables into Redis Enterprise
+* Use aws s3 cli to get the two needed data files  (these actually are also available in the github under data)
 ```bash
 ./downloadFiles.sh
 ```
