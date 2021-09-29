@@ -64,13 +64,11 @@ Initially started with a CloudFormation template from [Amazon Athena Workship](h
 ```bash
 git clone https://github.com/jphaugla/redisAthenaQuickSight.git
 ```
-* Set up the environment file for use case
-  * Most of the current environment variable values will work for most use cases but careful consideration must be made for the DNS entries. The subsequent cloudformation scripts will set up DNS but a hosted zone name must be selected and put in to the environment script for this to be successful.  Careful consideration of the cluster name should also be made.   Use the following link for a full explanation of [AWS Route53 DNS management with Redis Enterprise](https://docs.redis.com/latest/rs/installing-upgrading/configuring/configuring-aws-route53-dns-redis-enterprise/) 
-Edit setEnvironment.sh file for your environment.  Some notes on the setEnvironment script...
-  * The LocalIp is used to limit ssh access to AWS resources.  The AWS checkip URL is used.  If you want this wide open, comment out this line and replace with "0.0.0.0/0"
-  * A DNS hosted zone must be used for this cloudformation script to work because the additional DNS name space record and DNS Address record(s)
- are added in this cloudformation script
-
+* Set up the environment file for use case.  Edit setEnvironment.sh file for your environment.  Some notes on the setEnvironment script...
+    * Pay special attention to the DNS entries. The cloudformation sets up DNS using a hosted zone name.   Use the following link for a full explanation of [AWS Route53 DNS management with Redis Enterprise](https://docs.redis.com/latest/rs/installing-upgrading/configuring/configuring-aws-route53-dns-redis-enterprise/)  Port 53 is enabled in the Security Group for DNS
+    * The LocalIp is used to limit ssh access to AWS resources.  The AWS checkip URL is used.  If you want this wide open, comment out this line and replace with "0.0.0.0/0"
+    * The *CREATE_ALL parameter is defaulted to FALSE.  If set to true, it will create all the resources needed for the full AWS lab including EMR, Aurora, DynamoDB, etc.
+    * read through the comments in the setEnvironment.sh script for more details
 ### Create Environment
 * Some tips on creating an AWS account with [AWS Account instructions](https://athena-in-action.workshop.aws/20-howtostart/201-self-paced.html)
 * After reviewing  "Introduction" and "Getting Started", proceed to run the Athena Basic Stack from the workshop Template.  This is not needed if only proving out the redis part.
