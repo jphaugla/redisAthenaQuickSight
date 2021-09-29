@@ -1,0 +1,269 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Athena Federation Workshop - Deploy EMR Cluster with Hbase,  RedisDB, Aurora Mysql, DynamoDB, Cloud9 IDE, Sagemaker Notebook instance, Glue Database, Athena Named Queries 
+
+Mappings:
+  Map:
+    RedisMap:
+      EC2InstanceType: 'r4.xlarge'
+      keyname: 'jph_mac'
+
+Parameters:
+  RedisDatabasePort: 
+    Description: Specify database port used for Redis
+    Type: String
+  ClusterName: 
+    Description: Prefix Name of the Redis Cluster
+    Type: String
+  HostedZoneName: 
+    Description: Hosted Zone Name to use.  This with the prefix cluster name is redis cluster name
+    Type: String
+  HostedZoneId:
+    Description: HostedZoneNames can be duplicate so use Zone Id
+    Type: String
+  ClusterUserName:
+    Description: cluster username email address
+    Type: String
+  ClusterPassword:
+    Description: cluster password
+    Type: String
+  ClusterURL:
+    Description: cluster URL
+    Type: String
+  LocalIp:
+    Description: local IP address used for security group ssh port opening
+    Type: String
+  S3Bucket:
+    Description: S3Bucket for holding redis connector spillage
+    Type: String
+  CreateAdditional:
+    Description: Flag to create additional resources for the federated query including HBase, Aurora, DynamoDB, Cloud9, and Sagemaker.
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+
+Conditions:
+  Create-Full-Environment: !Equals [ !Ref CreateAdditional, true ] 
+
+Resources:
+  VPCStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: VPCStack.yaml
+      TimeoutInMinutes: 10
+      Parameters:
+        LocalIp:
+          Ref: LocalIp
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7aa57bac-380e-4523-a72b-ef898d0a0367
+  AWSRest:
+    Type: 'AWS::CloudFormation::Stack'
+    Condition: Create-Full-Environment
+    DependsOn: 
+      - VPCStack
+    Properties:
+      TemplateURL: AWSRest.yaml
+      TimeoutInMinutes: 20
+      Parameters:
+        LocalIp:
+          Ref: LocalIp
+        PublicSubnet1Id: !GetAtt VPCStack.Outputs.PublicSubnet1Id
+        PublicSubnet2Id: !GetAtt VPCStack.Outputs.PublicSubnet2Id
+        PublicSubnet3Id: !GetAtt VPCStack.Outputs.PublicSubnet3Id
+        WorkshopSecurityGroup: !GetAtt VPCStack.Outputs.WorkshopSecurityGroup  
+        EMRSecurityGroup: !GetAtt VPCStack.Outputs.EMRSecurityGroup  
+
+  RedisConnector:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: RedisConnector.yaml
+      TimeoutInMinutes: 10
+      Parameters:
+        AthenaCatalogName: 'redis'
+        SpillBucket: !Ref S3Bucket
+        SpillPrefix: 'athena-spill-redis'
+        SecretNameOrPrefix: 'redis-*'
+        SecurityGroupIds: !GetAtt VPCStack.Outputs.EMRSecurityGroup
+        SubnetIds: !Join [',', [!GetAtt VPCStack.Outputs.PublicSubnet1Id,!GetAtt VPCStack.Outputs.PublicSubnet2Id,!GetAtt VPCStack.Outputs.PublicSubnet3Id]]
+
+  RedisEnterpriseEC2:
+    Type:  AWS::EC2::Instance
+    DependsOn: 
+      - VPCStack
+    Properties:
+      ImageId: ami-0d894ea5521c64557 
+      InstanceType: !FindInMap [Map, RedisMap, EC2InstanceType]
+      SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
+      KeyName: !FindInMap [Map, RedisMap, keyname] 
+      SecurityGroupIds:
+        - !GetAtt VPCStack.Outputs.WorkshopSecurityGroup
+      Tags:
+        - Key: 'Name'
+          Value: !Ref AWS::StackName  
+      UserData:
+        Fn::Base64:
+          !Sub |
+             #!/bin/bash -xe
+             sudo  bash -l
+             /opt/redislabs/bin/rladmin cluster create name ${RedisNSRecord} persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} register_dns_suffix 
+             curl -v -k -u ${ClusterURL} -X POST https://localhost:9443/v1/bdbs -H Content-type:application/json -d '{ "name":"demo-db","port":${RedisDatabasePort},"memory_size":5000000,"type":"redis","replication":false}'
+             yum -y install git
+	     cd /home/ec2-user
+             git clone https://github.com/jphaugla/redisAthenaQuickSight.git
+             cd redisAthenaQuickSight
+             cat data/redis.data | redis-cli -c -h redis-${RedisDatabasePort}.${ClusterName} -p ${RedisDatabasePort}
+             cat data/active_orders.data | redis-cli -c -h redis-${RedisDatabasePort}.${ClusterName} -p ${RedisDatabasePort}
+
+  RedisARecord:
+    Type: AWS::Route53::RecordSet
+    DependsOn: 
+      - RedisEnterpriseEC2
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Comment: DNS name for my instance
+      Name: !Join ['',  ['node1.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+      Type: A
+      TTL: 900
+      ResourceRecords:
+        - !GetAtt RedisEnterpriseEC2.PublicIp
+
+  RedisNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Join ['', [ !Ref ClusterName, ., !Ref HostedZoneName ] ]
+      Type: NS
+      TTL: '900'
+      ResourceRecords:
+        - !Join ['', [ 'node1.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+
+
+  GlueDatabaseRedis:
+    Type: AWS::Glue::Database
+    Properties:
+      # The database is created in the Data Catalog for your account
+      CatalogId: !Ref AWS::AccountId   
+      DatabaseInput:
+        # The name of the database is defined in the Parameters section above
+        Name: redis
+        Description: Database to hold tables for redis data
+        LocationUri: s3://fake-bucket?redis-db-flag=redis-db-flag
+        #Parameters: Leave AWS database parameters blank
+
+  GlueTableActiveOrders:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: redis
+      TableInput:
+        Name: active_orders
+        Description: Define the first few columns of the flights table
+        TableType: EXTERNAL_TABLE
+        Parameters: {
+          "redis-db-flag": "redis-db-flag", 
+          "redis-endpoint": !Join [ '', ['redis-', !Ref RedisDatabasePort, '.', !Ref RedisNSRecord, ':', !Ref RedisDatabasePort ]] ,
+          "redis-key-prefix": "order-*", 
+          "redis-value-type": "literal" 
+        } 
+        PartitionKeys:
+          - {Name: orderkey, Type: string}
+        StorageDescriptor:
+          Columns:
+            - Type: int
+              Name: orderkey
+          Location: s3://fake-bucket/ 
+    
+  GlueTableNation:
+    Type: AWS::Glue::Table
+    DependsOn: 
+      - RedisEnterpriseEC2
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: redis
+      TableInput:
+        Name: nation
+        Description: Define the first few columns of the flights table
+        TableType: EXTERNAL_TABLE
+        Parameters: {
+          "redis-db-flag": "redis-db-flag", 
+          "redis-endpoint": !Join [ '', ['redis-', !Ref RedisDatabasePort, '.', !Ref RedisNSRecord, ':', !Ref RedisDatabasePort] ] ,
+          "redis-key-prefix": "nation-*", 
+          "redis-value-type": "literal" 
+          } 
+        PartitionKeys:
+          - {Name: n_name, Type: string} 
+        StorageDescriptor:
+          Columns:
+            - Type: string
+              Name: n_name
+          Location: s3://fake-bucket/                
+
+Outputs:
+
+  EMRMasterAddress:
+    Condition: Create-Full-Environment
+    Description: EMR Cluster Master address
+    Value: !GetAtt AWSRest.Outputs.EMRMasterAddress
+
+  HbaseConnectionString:
+    Condition: Create-Full-Environment
+    Description: Hbase Instance address for Athena Connector
+    Value: !GetAtt AWSRest.Outputs.HbaseConnectionString
+    
+  RDSInstanceAddress:
+    Condition: Create-Full-Environment
+    Description: RDS Instance endpoint
+    Value: !GetAtt AWSRest.Outputs.RDSInstanceAddress
+
+  RDSConnectionString:
+    Condition: Create-Full-Environment
+    Description: RDS Instance endpoint
+    Value: !GetAtt AWSRest.Outputs.RDSConnectionString
+
+  S3Bucket:
+    Condition: Create-Full-Environment
+    Description: S3 bucket
+    Value: !GetAtt AWSRest.Outputs.S3Bucket
+
+  Subnets:
+    Description: Subnets for workshop
+    Value: !Join [',', [!GetAtt VPCStack.Outputs.PublicSubnet1Id,!GetAtt VPCStack.Outputs.PublicSubnet2Id,!GetAtt VPCStack.Outputs.PublicSubnet3Id]]  
+
+  WorkshopSecurityGroup:
+    Description: 'Security Group'
+    Value: !GetAtt VPCStack.Outputs.WorkshopSecurityGroup
+
+  EMRSecurityGroup:
+    Description: 'Security Group'
+    Value: !GetAtt VPCStack.Outputs.EMRSecurityGroup 
+
+  RedisInstancePrivateDNS:
+    Description: 'Private DNS for Redis EC2 instance'
+    Value: !GetAtt RedisEnterpriseEC2.PrivateDnsName
+
+  RedisInstancePublicDNS:
+    Description: 'Public DNS for Redis EC2 instance'
+    Value: !GetAtt RedisEnterpriseEC2.PublicDnsName
+
+  RedisInstancePrivateIP:
+    Description: 'Private IP for Redis EC2 instance'
+    Value: !GetAtt RedisEnterpriseEC2.PrivateIp
+
+  RedisInstancePublicIP:
+    Description: 'Public IP for Redis EC2 instance'
+    Value: !GetAtt RedisEnterpriseEC2.PublicIp
+
+  RedisNSRecord:
+    Description: 'The NS Record Name for Redis'
+    Value: !Ref RedisNSRecord
+
+  RedisARecord:
+    Description: 'The A Record Name for Redis'
+    Value: !Ref RedisARecord
+
+  RedisPort:
+    Description: 'The Port used for Redis Database'
+    Value: !Ref RedisDatabasePort

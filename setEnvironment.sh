@@ -17,3 +17,5 @@ export HOSTEDZONEID=xxxxxxxxxx
 export CLUSTERUSERNAME=xxxxxxxxxx@xxxxxx.com
 export CLUSTERPASSWORD=xxxxxxxxxx
 export CLUSTERURL=${CLUSTERUSERNAME}:${CLUSTERPASSWORD}
+#  controls if additional components such as EMR, Hbase and Aurora are created
+export CREATE_ALL=false
