@@ -115,9 +115,9 @@ Resources:
              git clone https://github.com/jphaugla/redisAthenaQuickSight.git
              cd redisAthenaQuickSight
              cut -d '|' -f1,2 data/nation.tbl | sed -e 's/|/ "/' | sed -e 's/$/"/' | sed -e 's/^/nation-/' | sed -e 's/^/SET /' > data/redis.data
-             sleep 60
-             cat data/redis.data | redis-cli -c -h redis-${RedisDatabasePort}.${ClusterName}.${HostedZoneName} -p ${RedisDatabasePort}
-             cat data/active_orders.data | redis-cli -c -h redis-${RedisDatabasePort}.${ClusterName}.${HostedZoneName} -p ${RedisDatabasePort}
+             sleep 120
+             cat data/redis.data | redis-cli -c -p ${RedisDatabasePort}
+             cat data/active_orders.data | redis-cli -c -p ${RedisDatabasePort}
 
   RedisARecord:
     Type: AWS::Route53::RecordSet
