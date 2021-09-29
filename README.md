@@ -102,11 +102,12 @@ sudo bash
 ./loadscripts.sh
 ```
 
-### Continue with the workshop
-* this query should bring back data in athena but some timing issues may require the rerunning of the redis-cli commands on the redis instance
-Run this query in athena
+### Run this query in athena
 *select * from "lambda:redis".redis.nation limit 10;*
-The [Labs - Athena Basics](https://athena-in-action.workshop.aws/30-basics.html) section does not use the Redis connector but does have the section on "Visualize with QuickSight".  The important part for the Redis Connector is [Labs - Federated Queries](https://athena-in-action.workshop.aws/40-federatedquery.html).  
+
+### Continue with the workshop
+* The [Labs - Athena Basics](https://athena-in-action.workshop.aws/30-basics.html) section does not use the Redis connector but does have the section on "Visualize with QuickSight".  
+* The important part for the Redis Connector is [Labs - Federated Queries](https://athena-in-action.workshop.aws/40-federatedquery.html).  
 
 ### Cleanup
 Also important is the [cleanup section](https://athena-in-action.workshop.aws/100-cleanups.html) as the cloudformation scripts can't delete some of the resources created.
