@@ -111,11 +111,12 @@ Resources:
              /opt/redislabs/bin/rladmin cluster create name ${RedisNSRecord} persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} register_dns_suffix 
              curl -v -k -u ${ClusterURL} -X POST https://localhost:9443/v1/bdbs -H Content-type:application/json -d '{ "name":"demo-db","port":${RedisDatabasePort},"memory_size":5000000,"type":"redis","replication":false}'
              yum -y install git
-	     cd /home/ec2-user
+             cd /home/ec2-user
              git clone https://github.com/jphaugla/redisAthenaQuickSight.git
              cd redisAthenaQuickSight
-             cat data/redis.data | redis-cli -c -h redis-${RedisDatabasePort}.${ClusterName} -p ${RedisDatabasePort}
-             cat data/active_orders.data | redis-cli -c -h redis-${RedisDatabasePort}.${ClusterName} -p ${RedisDatabasePort}
+             cut -d '|' -f1,2 data/nation.tbl | sed -e 's/|/ "/' | sed -e 's/$/"/' | sed -e 's/^/nation-/' | sed -e 's/^/SET /' > data/redis.data
+             cat data/redis.data | redis-cli -c -h redis-${RedisDatabasePort}.${ClusterName}.${HostedZoneName} -p ${RedisDatabasePort}
+             cat data/active_orders.data | redis-cli -c -h redis-${RedisDatabasePort}.${ClusterName}.${HostedZoneName} -p ${RedisDatabasePort}
 
   RedisARecord:
     Type: AWS::Route53::RecordSet
