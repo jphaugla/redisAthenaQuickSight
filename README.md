@@ -21,8 +21,7 @@ Demo integrating Redis Enterprise with Amazon Athena and Amazon QuickSight
 
 ## Overview
 
-Initially started with a CloudFormation template from [Amazon Athena Workship](https://athena-in-action.workshop.aws/40-federatedquery.html).  This template has been modified to use Redis Enterprise instead of AWS ElasticCache.  Redis Enterprise offers lower TCO with horizontal and vertical scaling as well as improved developer experience with Redis modules.  
-
+Initially started with a CloudFormation template from [Amazon Athena Workship](https://athena-in-action.workshop.aws/40-federatedquery.html).  This template has been modified to use Redis Enterprise instead of AWS ElasticCache.  Redis Enterprise offers lower TCO with horizontal and vertical scaling as well as improved developer experience with Redis modules.  There is an option to deploy the full workshop deployment or just deploy the components necessary for the athena/redis enterprise integration.
 ## AWS Services Used
 
 * [Amazon Athena ](https://aws.amazon.com/athena/)
@@ -45,6 +44,7 @@ Initially started with a CloudFormation template from [Amazon Athena Workship](h
 * The required DNS entries for Redis Enterprise are included in the cloudformation script
 * The RedisEnterprise EC2 resource uses the marketplace AMI with the Redis Enterprise Software pre-installed
 * This RE EC2 resource has UserData entries to create the Redis Cluster, create a redis database, and load a very small amount of sample redis data using the github after also installing git
+* Two additional nodes are added to the cluster to make it a three node cluster
 * The redis connector is also in a nested cloudformation script called *RedisConnector.yaml*.  This connector allows athena to access Redis.
 
 &nbsp;
