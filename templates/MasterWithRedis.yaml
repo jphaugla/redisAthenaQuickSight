@@ -89,7 +89,7 @@ Resources:
         SecurityGroupIds: !GetAtt VPCStack.Outputs.EMRSecurityGroup
         SubnetIds: !Join [',', [!GetAtt VPCStack.Outputs.PublicSubnet1Id,!GetAtt VPCStack.Outputs.PublicSubnet2Id,!GetAtt VPCStack.Outputs.PublicSubnet3Id]]
 
-  RedisEnterpriseEC2:
+  RedisEC2VM1:
     Type:  AWS::EC2::Instance
     DependsOn: 
       - VPCStack
@@ -102,7 +102,7 @@ Resources:
         - !GetAtt VPCStack.Outputs.WorkshopSecurityGroup
       Tags:
         - Key: 'Name'
-          Value: !Ref AWS::StackName  
+          Value: !Join ['',  [!Ref AWS::StackName, 'VM1'] ]
       UserData:
         Fn::Base64:
           !Sub |
@@ -119,10 +119,56 @@ Resources:
              cat data/redis.data | /opt/redislabs/bin/redis-cli -c -p ${RedisDatabasePort}
              cat data/active_orders.data | /opt/redislabs/bin/redis-cli -c -p ${RedisDatabasePort}
 
-  RedisARecord:
+  RedisEC2VM2:
+    Type:  AWS::EC2::Instance
+    DependsOn: 
+      - VPCStack
+      - RedisEC2VM1
+    Properties:
+      ImageId: ami-0d894ea5521c64557 
+      InstanceType: !FindInMap [Map, RedisMap, EC2InstanceType]
+      SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
+      KeyName: !FindInMap [Map, RedisMap, keyname] 
+      SecurityGroupIds:
+        - !GetAtt VPCStack.Outputs.WorkshopSecurityGroup
+      Tags:
+        - Key: 'Name'
+          Value: !Join ['',  [!Ref AWS::StackName, 'VM2'] ]
+      UserData:
+        Fn::Base64:
+          !Sub |
+             #!/bin/bash -xe
+             sudo  bash -l
+             yum -y install bind-utils
+             /opt/redislabs/bin/rladmin cluster join nodes $(dig +short node1.${ClusterName}.${HostedZoneName}) persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} 
+
+  RedisEC2VM3:
+    Type:  AWS::EC2::Instance
+    DependsOn: 
+      - VPCStack
+      - RedisEC2VM1
+    Properties:
+      ImageId: ami-0d894ea5521c64557 
+      InstanceType: !FindInMap [Map, RedisMap, EC2InstanceType]
+      SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
+      KeyName: !FindInMap [Map, RedisMap, keyname] 
+      SecurityGroupIds:
+        - !GetAtt VPCStack.Outputs.WorkshopSecurityGroup
+      Tags:
+        - Key: 'Name'
+          Value: !Join ['',  [!Ref AWS::StackName, 'VM3'] ]
+      UserData:
+        Fn::Base64:
+          !Sub |
+             #!/bin/bash -xe
+             sudo  bash -l
+             yum -y install bind-utils
+             /opt/redislabs/bin/rladmin cluster join nodes $(dig +short node1.${ClusterName}.${HostedZoneName}) persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} 
+
+  RedisARecord1:
     Type: AWS::Route53::RecordSet
     DependsOn: 
-      - RedisEnterpriseEC2
+      - RedisEC2VM1
     Properties:
       HostedZoneId: !Ref HostedZoneId
       Comment: DNS name for my instance
@@ -130,7 +176,33 @@ Resources:
       Type: A
       TTL: 900
       ResourceRecords:
-        - !GetAtt RedisEnterpriseEC2.PublicIp
+        - !GetAtt RedisEC2VM1.PublicIp
+
+  RedisARecord2:
+    Type: AWS::Route53::RecordSet
+    DependsOn: 
+      - RedisEC2VM2
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Comment: DNS name for my instance
+      Name: !Join ['',  ['node2.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+      Type: A
+      TTL: 900
+      ResourceRecords:
+        - !GetAtt RedisEC2VM2.PublicIp
+
+  RedisARecord3:
+    Type: AWS::Route53::RecordSet
+    DependsOn: 
+      - RedisEC2VM3
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Comment: DNS name for my instance
+      Name: !Join ['',  ['node3.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+      Type: A
+      TTL: 900
+      ResourceRecords:
+        - !GetAtt RedisEC2VM2.PublicIp
 
   RedisNSRecord:
     Type: AWS::Route53::RecordSet
@@ -141,6 +213,8 @@ Resources:
       TTL: '900'
       ResourceRecords:
         - !Join ['', [ 'node1.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+        - !Join ['', [ 'node2.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+        - !Join ['', [ 'node3.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
 
 
   GlueDatabaseRedis:
@@ -181,7 +255,7 @@ Resources:
   GlueTableNation:
     Type: AWS::Glue::Table
     DependsOn: 
-      - RedisEnterpriseEC2
+      - RedisNSRecord
     Properties:
       CatalogId: !Ref AWS::AccountId
       DatabaseName: redis
@@ -244,27 +318,27 @@ Outputs:
 
   RedisInstancePrivateDNS:
     Description: 'Private DNS for Redis EC2 instance'
-    Value: !GetAtt RedisEnterpriseEC2.PrivateDnsName
+    Value: !GetAtt RedisEC2VM1.PrivateDnsName
 
   RedisInstancePublicDNS:
     Description: 'Public DNS for Redis EC2 instance'
-    Value: !GetAtt RedisEnterpriseEC2.PublicDnsName
+    Value: !GetAtt RedisEC2VM1.PublicDnsName
 
   RedisInstancePrivateIP:
     Description: 'Private IP for Redis EC2 instance'
-    Value: !GetAtt RedisEnterpriseEC2.PrivateIp
+    Value: !GetAtt RedisEC2VM1.PrivateIp
 
   RedisInstancePublicIP:
     Description: 'Public IP for Redis EC2 instance'
-    Value: !GetAtt RedisEnterpriseEC2.PublicIp
+    Value: !GetAtt RedisEC2VM1.PublicIp
 
   RedisNSRecord:
     Description: 'The NS Record Name for Redis'
     Value: !Ref RedisNSRecord
 
-  RedisARecord:
+  RedisARecord1:
     Description: 'The A Record Name for Redis'
-    Value: !Ref RedisARecord
+    Value: !Ref RedisARecord1
 
   RedisPort:
     Description: 'The Port used for Redis Database'

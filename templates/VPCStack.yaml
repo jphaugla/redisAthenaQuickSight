@@ -192,6 +192,14 @@ Resources:
           ToPort: 53
         - IpProtocol: -1
           SourceSecurityGroupId: !Ref EMRSecurityGroup     
+      
+  WorkShopGroupInternalIngress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      IpProtocol: -1
+      SourceSecurityGroupId: !GetAtt WorkshopSecurityGroup.GroupId     
+      GroupId: !GetAtt WorkshopSecurityGroup.GroupId     
+ 
 
   S3VPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
