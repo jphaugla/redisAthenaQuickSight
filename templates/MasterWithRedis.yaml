@@ -118,8 +118,8 @@ Resources:
              #!/bin/bash -xe
              sudo  bash -l
              /opt/redislabs/bin/rladmin cluster create name ${RedisNSRecord} persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} register_dns_suffix 
+             yum -y install git wget
              curl -v -k -u ${ClusterURL} -X POST https://localhost:9443/v1/bdbs -H Content-type:application/json -d '{ "name":"demo-db","port":${RedisDatabasePort},"memory_size":5000000,"type":"redis","replication":false}'
-             yum -y install git
              cd /home/ec2-user
              git clone https://github.com/jphaugla/redisAthenaQuickSight.git
              cd redisAthenaQuickSight
@@ -127,6 +127,12 @@ Resources:
              sleep 120
              cat data/redis.data | /opt/redislabs/bin/redis-cli -c -p ${RedisDatabasePort}
              cat data/active_orders.data | /opt/redislabs/bin/redis-cli -c -p ${RedisDatabasePort}
+             cd /home/ec2-user
+             mkdir rlec
+             cd rlec
+             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.8/redislabs-6.2.8-53-rhel7-x86_64.tar
+             tar xvf redislabs-6.2.8-53-rhel7-x86_64.tar
+             ./install.sh -y
 
   RedisEC2VM2:
     Type:  AWS::EC2::Instance
@@ -148,8 +154,14 @@ Resources:
           !Sub |
              #!/bin/bash -xe
              sudo  bash -l
-             yum -y install bind-utils
+             yum -y install bind-utils git wget
              /opt/redislabs/bin/rladmin cluster join nodes $(dig +short node1.${ClusterName}.${HostedZoneName}) persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} 
+             cd /home/ec2-user
+             mkdir rlec
+             cd rlec
+             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.8/redislabs-6.2.8-53-rhel7-x86_64.tar
+             tar xvf redislabs-6.2.8-53-rhel7-x86_64.tar
+             ./install.sh -y
 
   RedisEC2VM3:
     Type:  AWS::EC2::Instance
@@ -171,8 +183,14 @@ Resources:
           !Sub |
              #!/bin/bash -xe
              sudo  bash -l
-             yum -y install bind-utils
+             yum -y install bind-utils git wget
              /opt/redislabs/bin/rladmin cluster join nodes $(dig +short node1.${ClusterName}.${HostedZoneName}) persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} 
+             cd /home/ec2-user
+             mkdir rlec
+             cd rlec
+             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.8/redislabs-6.2.8-53-rhel7-x86_64.tar
+             tar xvf redislabs-6.2.8-53-rhel7-x86_64.tar
+             ./install.sh -y
 
   RedisARecord1:
     Type: AWS::Route53::RecordSet
