@@ -3,10 +3,37 @@ Transform: 'AWS::Serverless-2016-10-31'
 Description: Athena Federation Workshop - Deploy EMR Cluster with Hbase,  RedisDB, Aurora Mysql, DynamoDB, Cloud9 IDE, Sagemaker Notebook instance, Glue Database, Athena Named Queries 
 
 Mappings:
-  Map:
-    RedisMap:
-      EC2InstanceType: 'r4.xlarge'
-      keyname: 'jph_mac3'
+  RegionMap:
+    us-east-1: # Virginia
+      "EC2AMI" : "ami-0d894ea5521c64557"
+    us-east-2: # Ohio
+      "EC2AMI" : "ami-082a25bc38620fc4d"
+    us-east-3: # NCALIF
+      "EC2AMI" : "ami-01773f954c3875420"
+    us-west-2: # Oregon
+      "EC2AMI" : "ami-05037ab6f618ed336"
+    ap-south-1: # Mumbai
+      "EC2AMI" : "ami-0eefc21aa52001198"
+    ap-northeast-2: # Seoul
+      "EC2AMI" : "ami-0967b7ff9a7ba331e"
+    ap-southeast-1: # Singapore
+      "EC2AMI" : "ami-052d3e5a59fc4a877"
+    ap-southeast-2: # Sydney 
+      "EC2AMI" : "ami-097cbef0451a30da5"
+    ap-northeast-1: # Tokyo
+      "EC2AMI" : "ami-0ce04ab8bcd5de2e9"
+    eu-central-1: # Frankfurt
+      "EC2AMI" : " ami-09304ee2fe70b3aad"
+    eu-west-1: # Ireland
+      "EC2AMI" : "ami-03b7776ede7f47475"
+    eu-west-2: # London
+      "EC2AMI" : "ami-0c2b997e5c91153e0"
+    eu-west-3: # Paris  
+      "EC2AMI" : "ami-0176733f200a89b17"
+    eu-north-1: # Stockholm 
+      "EC2AMI" : "ami-040e6fa2d290e7b9b"
+    sa-east-1: # Sao Paulo 
+      "EC2AMI" : "ami-06d197a564493b29b"
 
 Parameters:
   RedisDatabasePort: 
@@ -36,6 +63,15 @@ Parameters:
   S3Bucket:
     Description: S3Bucket for holding redis connector spillage
     Type: String
+  KeyPair:
+    Description: key pair name for ec2 instances
+    Type: String
+  NumberInstances:
+    Description: Number of Redis EC2 instances for this region
+    Type: Number
+    MinValue: 1
+    MaxValue: 3
+    Default: 3
   CreateAdditional:
     Description: Flag to create additional resources for the federated query including HBase, Aurora, DynamoDB, Cloud9, and Sagemaker.
     Type: String
@@ -50,10 +86,43 @@ Parameters:
     AllowedValues:
       - true
       - false
+  EC2InstanceType:
+    Description: Amazon EC2 Instance Type  m4 and m5.xlarge 4-16 m5 has better network, 2xlarge 8-13,  r4.xlarge 4 30.5, 8 61
+    Type: String
+    Default: r4.2xlarge
+    AllowedValues:
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m4.16xlarge
+      - c5a.xlarge
+      - c5a.2xlarge
+      - c5a.4xlarge
+      - c5a.8xlarge
+      - c5a.16xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
 
 Conditions:
   Create-Full-Environment: !Equals [ !Ref CreateAdditional, true ] 
   Create-Connector: !Equals [ !Ref CreateConnector, true ] 
+  Create-One: !Equals [ !Ref NumberInstances, 1 ]
+  Create-Two: !Equals [ !Ref NumberInstances, 2 ]
+  Create-Three: !Equals [ !Ref NumberInstances, 3 ]
+  Do-Two: !Or
+    - !Condition Create-Two
+    - !Condition Create-Three
 
 Resources:
   VPCStack:
@@ -103,10 +172,14 @@ Resources:
     DependsOn: 
       - VPCStack
     Properties:
-      ImageId: ami-0d894ea5521c64557 
-      InstanceType: !FindInMap [Map, RedisMap, EC2InstanceType]
+      ImageId: 
+        Fn::FindInMap:
+        - RegionMap
+        - !Ref AWS::Region
+        - EC2AMI
+      InstanceType: !Ref EC2InstanceType
       SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
-      KeyName: !FindInMap [Map, RedisMap, keyname] 
+      KeyName: !Ref KeyPair
       SecurityGroupIds:
         - !GetAtt VPCStack.Outputs.WorkshopSecurityGroup
       Tags:
@@ -136,14 +209,19 @@ Resources:
 
   RedisEC2VM2:
     Type:  AWS::EC2::Instance
+    Condition: Do-Two
     DependsOn: 
       - VPCStack
       - RedisEC2VM1
     Properties:
-      ImageId: ami-0d894ea5521c64557 
-      InstanceType: !FindInMap [Map, RedisMap, EC2InstanceType]
+      ImageId: 
+        Fn::FindInMap:
+        - RegionMap
+        - !Ref AWS::Region
+        - EC2AMI
+      InstanceType: !Ref EC2InstanceType
       SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
-      KeyName: !FindInMap [Map, RedisMap, keyname] 
+      KeyName: !Ref KeyPair
       SecurityGroupIds:
         - !GetAtt VPCStack.Outputs.WorkshopSecurityGroup
       Tags:
@@ -164,15 +242,20 @@ Resources:
              ./install.sh -y
 
   RedisEC2VM3:
+    Condition: Create-Three
     Type:  AWS::EC2::Instance
     DependsOn: 
       - VPCStack
       - RedisEC2VM1
     Properties:
-      ImageId: ami-0d894ea5521c64557 
-      InstanceType: !FindInMap [Map, RedisMap, EC2InstanceType]
+      ImageId: 
+        Fn::FindInMap:
+        - RegionMap
+        - !Ref AWS::Region
+        - EC2AMI
+      InstanceType: !Ref EC2InstanceType
       SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
-      KeyName: !FindInMap [Map, RedisMap, keyname] 
+      KeyName: !Ref KeyPair
       SecurityGroupIds:
         - !GetAtt VPCStack.Outputs.WorkshopSecurityGroup
       Tags:
@@ -206,6 +289,7 @@ Resources:
         - !GetAtt RedisEC2VM1.PublicIp
 
   RedisARecord2:
+    Condition: Do-Two
     Type: AWS::Route53::RecordSet
     DependsOn: 
       - RedisEC2VM2
@@ -219,6 +303,7 @@ Resources:
         - !GetAtt RedisEC2VM2.PublicIp
 
   RedisARecord3:
+    Condition: Create-Three
     Type: AWS::Route53::RecordSet
     DependsOn: 
       - RedisEC2VM3
@@ -229,7 +314,7 @@ Resources:
       Type: A
       TTL: 900
       ResourceRecords:
-        - !GetAtt RedisEC2VM2.PublicIp
+        - !GetAtt RedisEC2VM3.PublicIp
 
   RedisNSRecord:
     Type: AWS::Route53::RecordSet
