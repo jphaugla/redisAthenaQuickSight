@@ -190,7 +190,7 @@ Resources:
           !Sub |
              #!/bin/bash -xe
              sudo  bash -l
-             /opt/redislabs/bin/rladmin cluster create name ${RedisNSRecord} persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} register_dns_suffix 
+             /opt/redislabs/bin/rladmin cluster create name ${RedisNSRecord} persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} external_addr $(dig +short myip.opendns.com @resolver1.opendns.com) register_dns_suffix
              yum -y install git wget
              curl -v -k -u ${ClusterURL} -X POST https://localhost:9443/v1/bdbs -H Content-type:application/json -d '{ "name":"demo-db","port":${RedisDatabasePort},"memory_size":5000000,"type":"redis","replication":false}'
              cd /home/ec2-user

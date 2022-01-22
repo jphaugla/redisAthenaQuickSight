@@ -179,9 +179,29 @@ Resources:
           FromPort: 22
           ToPort: 22
         - IpProtocol: "tcp"
-          CidrIp: !Join ['', [!Ref LocalIp, "/32"] ]
-          FromPort: 3306
-          ToPort: 3306
+          CidrIp: "0.0.0.0/0"
+          FromPort: 9443
+          ToPort: 9443
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 8080
+          ToPort: 8080
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 8443
+          ToPort: 8443
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 12000
+          ToPort: 12000
+        - IpProtocol: "udp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 5353
+          ToPort: 5353
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 5353
+          ToPort: 5353
         - IpProtocol: "udp"
           CidrIp: "0.0.0.0/0"
           FromPort: 53
