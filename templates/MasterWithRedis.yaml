@@ -5,35 +5,35 @@ Description: Athena Federation Workshop - Deploy EMR Cluster with Hbase,  RedisD
 Mappings:
   RegionMap:
     us-east-1: # Virginia
-      "EC2AMI" : "ami-0d894ea5521c64557"
+      "RedisEC2AMI" : "ami-0d894ea5521c64557"
     us-east-2: # Ohio
-      "EC2AMI" : "ami-082a25bc38620fc4d"
+      "RedisEC2AMI" : "ami-082a25bc38620fc4d"
     us-east-3: # NCALIF
-      "EC2AMI" : "ami-01773f954c3875420"
+      "RedisEC2AMI" : "ami-01773f954c3875420"
     us-west-2: # Oregon
-      "EC2AMI" : "ami-05037ab6f618ed336"
+      "RedisEC2AMI" : "ami-05037ab6f618ed336"
     ap-south-1: # Mumbai
-      "EC2AMI" : "ami-0eefc21aa52001198"
+      "RedisEC2AMI" : "ami-0eefc21aa52001198"
     ap-northeast-2: # Seoul
-      "EC2AMI" : "ami-0967b7ff9a7ba331e"
+      "RedisEC2AMI" : "ami-0967b7ff9a7ba331e"
     ap-southeast-1: # Singapore
-      "EC2AMI" : "ami-052d3e5a59fc4a877"
+      "RedisEC2AMI" : "ami-052d3e5a59fc4a877"
     ap-southeast-2: # Sydney 
-      "EC2AMI" : "ami-097cbef0451a30da5"
+      "RedisEC2AMI" : "ami-097cbef0451a30da5"
     ap-northeast-1: # Tokyo
-      "EC2AMI" : "ami-0ce04ab8bcd5de2e9"
+      "RedisEC2AMI" : "ami-0ce04ab8bcd5de2e9"
     eu-central-1: # Frankfurt
-      "EC2AMI" : " ami-09304ee2fe70b3aad"
+      "RedisEC2AMI" : " ami-09304ee2fe70b3aad"
     eu-west-1: # Ireland
-      "EC2AMI" : "ami-03b7776ede7f47475"
+      "RedisEC2AMI" : "ami-03b7776ede7f47475"
     eu-west-2: # London
-      "EC2AMI" : "ami-0c2b997e5c91153e0"
+      "RedisEC2AMI" : "ami-0c2b997e5c91153e0"
     eu-west-3: # Paris  
-      "EC2AMI" : "ami-0176733f200a89b17"
+      "RedisEC2AMI" : "ami-0176733f200a89b17"
     eu-north-1: # Stockholm 
-      "EC2AMI" : "ami-040e6fa2d290e7b9b"
+      "RedisEC2AMI" : "ami-040e6fa2d290e7b9b"
     sa-east-1: # Sao Paulo 
-      "EC2AMI" : "ami-06d197a564493b29b"
+      "RedisEC2AMI" : "ami-06d197a564493b29b"
 
 Parameters:
   RedisDatabasePort: 
@@ -79,6 +79,20 @@ Parameters:
     AllowedValues:
       - true
       - false
+  CreateHaProxy:
+    Description: Flag to create an Haproxy VPC and HAProxy ec2 instance
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+  UseRedisElasticIP:
+    Description: Flag to fixed IPs for the redis nodes
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
   CreateConnector:
     Description: Flag to create Connector for Redis
     Type: String
@@ -86,7 +100,7 @@ Parameters:
     AllowedValues:
       - true
       - false
-  EC2InstanceType:
+  RedisEC2InstanceType:
     Description: Amazon EC2 Instance Type  m4 and m5.xlarge 4-16 m5 has better network, 2xlarge 8-13,  r4.xlarge 4 30.5, 8 61
     Type: String
     Default: r4.2xlarge
@@ -113,13 +127,54 @@ Parameters:
       - i3.8xlarge
       - i3.16xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
+  EC2ClientInstanceType:
+    Description: Amazon EC2 Instance Type
+    Type: String
+    Default: m5.xlarge
+    AllowedValues:
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5a.large
+      - m5a.xlarge
+      - m5a.2xlarge
+      - m5a.4xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+
+  RedisVpcCIDR:
+    Description: Enter the Redis VPC CIDR range in the form x.x.x.x/16.
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/16.
+    Default: 10.20.0.0/16
+  HaProxyVpcCIDR:
+    Description: Enter the HaProxy VPC CIDR range in the form x.x.x.x/16.
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/16.
+    Default: 10.21.0.0/16
+  ClientVpcCIDR:
+    Description: Enter the Client VPC CIDR range in the form x.x.x.x/16.
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/16.
+    Default: 10.22.0.0/16
 
 Conditions:
   Create-Full-Environment: !Equals [ !Ref CreateAdditional, true ] 
+  Create-HAProxy: !Equals [ !Ref CreateHaProxy, true ]
   Create-Connector: !Equals [ !Ref CreateConnector, true ] 
   Create-One: !Equals [ !Ref NumberInstances, 1 ]
   Create-Two: !Equals [ !Ref NumberInstances, 2 ]
   Create-Three: !Equals [ !Ref NumberInstances, 3 ]
+  Create-ElasticIps: !Equals [ !Ref UseRedisElasticIP, true ]
   Do-Two: !Or
     - !Condition Create-Two
     - !Condition Create-Three
@@ -133,6 +188,30 @@ Resources:
       Parameters:
         LocalIp:
           Ref: LocalIp
+        RedisVpcCIDR:
+          Ref: RedisVpcCIDR
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7aa57bac-380e-4523-a72b-ef898d0a0367
+  HAVPCStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Condition: Create-HAProxy
+    Properties:
+      TemplateURL: HAProxyVPC.yaml
+      TimeoutInMinutes: 10
+      Parameters:
+        LocalIp:
+          Ref: LocalIp
+        HaProxyVpcCIDR:
+          Ref: HaProxyVpcCIDR
+        KeyName:
+          Ref: KeyPair
+        EC2ClientInstanceType:
+          Ref: EC2ClientInstanceType
+        RedisDatabase:
+          Join [ '', ['redis-', !Ref RedisDatabasePort, '.', !Ref RedisNSRecord ] ]
+        RedisPORT:
+          Ref: RedisDatabasePort
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 7aa57bac-380e-4523-a72b-ef898d0a0367
@@ -169,9 +248,11 @@ Resources:
 
   IPAddressVM1:
     Type: AWS::EC2::EIP
+    Condition: Create-ElasticIps
 
   IPAssocVM1:
     Type: AWS::EC2::EIPAssociation
+    Condition: Create-ElasticIps
     Properties:
       InstanceId: !Ref RedisEC2VM1
       EIP: !Ref IPAddressVM1
@@ -185,8 +266,8 @@ Resources:
         Fn::FindInMap:
         - RegionMap
         - !Ref AWS::Region
-        - EC2AMI
-      InstanceType: !Ref EC2InstanceType
+        - RedisEC2AMI
+      InstanceType: !Ref RedisEC2InstanceType
       SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
       KeyName: !Ref KeyPair
       SecurityGroupIds:
@@ -218,10 +299,12 @@ Resources:
 
   IPAddressVM2:
     Condition: Do-Two
+    Condition: Create-ElasticIps
     Type: AWS::EC2::EIP
 
   IPAssocVM2:
     Condition: Do-Two
+    Condition: Create-ElasticIps
     Type: AWS::EC2::EIPAssociation
     Properties:
       InstanceId: !Ref RedisEC2VM2
@@ -238,8 +321,8 @@ Resources:
         Fn::FindInMap:
         - RegionMap
         - !Ref AWS::Region
-        - EC2AMI
-      InstanceType: !Ref EC2InstanceType
+        - RedisEC2AMI
+      InstanceType: !Ref RedisEC2InstanceType
       SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
       KeyName: !Ref KeyPair
       SecurityGroupIds:
@@ -263,6 +346,19 @@ Resources:
              sudo  bash -l
              /opt/redislabs/bin/rladmin cluster join nodes ${RedisEC2VM1.PrivateIp} persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} external_addr $(dig +short myip.opendns.com @resolver1.opendns.com)
 
+  IPAddressVM3:
+    Condition: Do-Three
+    Condition: Create-ElasticIps
+    Type: AWS::EC2::EIP
+
+  IPAssocVM3:
+    Condition: Do-Three
+    Condition: Create-ElasticIps
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref RedisEC2VM2
+      EIP: !Ref IPAddressVM2
+
   RedisEC2VM3:
     Condition: Create-Three
     Type:  AWS::EC2::Instance
@@ -274,8 +370,8 @@ Resources:
         Fn::FindInMap:
         - RegionMap
         - !Ref AWS::Region
-        - EC2AMI
-      InstanceType: !Ref EC2InstanceType
+        - RedisEC2AMI
+      InstanceType: !Ref RedisEC2InstanceType
       SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
       KeyName: !Ref KeyPair
       SecurityGroupIds:
@@ -351,6 +447,12 @@ Resources:
         - !Join ['', [ 'node1.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
         - !Join ['', [ 'node2.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
         - !Join ['', [ 'node3.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+
+  vpcPeeringConnection:
+    Type: 'AWS::EC2::VPCPeeringConnection'
+    Properties:
+      VpcId: !GetAtt VPCStack.Outputs.VpcId
+      PeerVpcId: !GetAtt HAVPCStack.Outputs.VpcId
 
 
   GlueDatabaseRedis:

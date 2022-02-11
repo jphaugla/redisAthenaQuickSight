@@ -1,23 +1,82 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Stack 1: Deploy VPC with 3 public subnet, Security Group, S3, S3 Endpoind, Glue VPC '
 
+Mappings:
+  RegionMap: # 20 Regions
+    us-east-1: # Virginia
+      "EC2AMI" : "ami-08e4e35cccc6189f4"  # Updated Feb 3, 2020
+    us-east-2: # Ohio
+      "EC2AMI" : "ami-001089eb624938d9f" # Updated Feb 3, 2020
+    us-west-2: # Oregon
+      "EC2AMI" : "ami-066333d9c572b0680" # Updated Feb 3, 2020
+    ap-south-1: # Mumbai
+      "EC2AMI" : "ami-0af25d0df86db00c1" # Updated Feb 3, 2020
+    ap-northeast-2: # Seoul
+      "EC2AMI" : "ami-0b1d3b1941f23c7d5" # Updated Feb 3, 2020
+    ap-southeast-1: # Singapore
+      "EC2AMI" : "ami-0356b1cd4aa0ee970" # Updated Feb 3, 2020
+    ap-southeast-2: # Sydney
+      "EC2AMI" : "ami-01dc883c13e87eeda" # Updated Feb 3, 2020
+    ap-northeast-1: # Tokyo
+      "EC2AMI" : "ami-032d6db78f84e8bf5" # Updated Feb 3, 2020
+    ca-central-1: # Canada
+      "EC2AMI" : "ami-0cd73cc497a2d6e69"
+    eu-central-1: # Frankfurt
+      "EC2AMI" : "ami-05cafdf7c9f772ad2" # Updated Feb 3, 2020
+    eu-west-1: # Ireland
+      "EC2AMI" : "ami-01efa4023f0f3a042" # Updated Feb 3, 2020
+    eu-west-2: # London
+      "EC2AMI" : "ami-0fdbd8587b1cf431e" # Updated Feb 3, 2020
+    eu-south-1: # Milan
+      "EC2AMI" : "ami-0237a7d686bc096c4" # Updated Feb 3, 2020
+    eu-west-3: # Paris
+      "EC2AMI" : "ami-031eb8d942193d84f" # Updated Feb 3, 2020
+    eu-north-1: # Stockholm [NO AMD]
+      "EC2AMI" : "ami-067a92fcca2611950" # Updated Feb 3, 2020
+    sa-east-1: # Sao Paulo
+      "EC2AMI" : "ami-06078a297452ba5aa" # Updated Feb 3, 2020
+
 Parameters:
   LocalIp:
     Description:  Local IP address to limit workgroup opening
     Type: String
-  RedisVpcCIDR:
+  HaProxyVpcCIDR:
     Description: Enter the Redis VPC CIDR range in the form x.x.x.x/16.
     Type: String
     MinLength: 9
     MaxLength: 18
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
     ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/16.
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable RDP access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  RedisDatabase:
+    Description: Full URL of the redis database example is  redis-12000.central1.redis.com
+    Type: String
+  RedisPORT:
+    Description: Redis Port
+    Type: String
+  EC2ClientInstanceType:
+    Description: Amazon EC2 Instance Type
+    Type: String
+    Default: m5.xlarge
+    AllowedValues:
+      - m5.large 
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5a.large
+      - m5a.xlarge
+      - m5a.2xlarge
+      - m5a.4xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
 
 Resources:
-  VPC:
+  HAPVPC:
     Type: 'AWS::EC2::VPC'
     Properties:
-      CidrBlock: !Ref RedisVpcCIDR
+      CidrBlock: !Ref HaProxyVpcCIDR
       EnableDnsSupport: true
       EnableDnsHostnames: true
       InstanceTenancy: default
@@ -27,24 +86,24 @@ Resources:
           Fn::Join:
           - "-"
           - - Ref: AWS::StackName
-            - VPC
+            - hapvpc
 
   InternetGateway:
     Type: 'AWS::EC2::InternetGateway'
 
-  VPCGatewayAttachment:
+  HAPVPCGatewayAttachment:
     Type: 'AWS::EC2::VPCGatewayAttachment'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
       InternetGatewayId: !Ref InternetGateway
 
   PublicSubnet1:
     Type: 'AWS::EC2::Subnet'
     Properties:
       AvailabilityZone: !Select [0, !GetAZs '']
-      CidrBlock: !Select [ 0, !Cidr [ !GetAtt VPC.CidrBlock, 3, 8 ]]
+      CidrBlock: !Select [ 0, !Cidr [ !GetAtt HAPVPC.CidrBlock, 3, 8 ]]
       MapPublicIpOnLaunch: true
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
       Tags:
       - Key: Name
         Value:
@@ -57,9 +116,9 @@ Resources:
     Type: 'AWS::EC2::Subnet'
     Properties:
       AvailabilityZone: !Select [1, !GetAZs '']
-      CidrBlock: !Select [ 1, !Cidr [ !GetAtt VPC.CidrBlock, 3, 8 ]]
+      CidrBlock: !Select [ 1, !Cidr [ !GetAtt HAPVPC.CidrBlock, 3, 8 ]]
       MapPublicIpOnLaunch: true
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
       Tags:
       - Key: Name
         Value:
@@ -72,9 +131,9 @@ Resources:
     Type: 'AWS::EC2::Subnet'
     Properties:
       AvailabilityZone: !Select [2, !GetAZs '']
-      CidrBlock: !Select [ 2, !Cidr [ !GetAtt VPC.CidrBlock, 3, 8 ]]
+      CidrBlock: !Select [ 2, !Cidr [ !GetAtt HAPVPC.CidrBlock, 3, 8 ]]
       MapPublicIpOnLaunch: true
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
       Tags:
       - Key: Name
         Value:
@@ -86,15 +145,15 @@ Resources:
   RouteTablePublicSubnet1:
     Type: 'AWS::EC2::RouteTable'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
   RouteTablePublicSubnet2:
     Type: 'AWS::EC2::RouteTable'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
   RouteTablePublicSubnet3:
     Type: 'AWS::EC2::RouteTable'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
   RouteTableAssociationPublicSubnet1:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Properties:
@@ -112,21 +171,21 @@ Resources:
       RouteTableId: !Ref RouteTablePublicSubnet3
   RouteTablePublicSubnet1InternetRoute:
     Type: 'AWS::EC2::Route'
-    DependsOn: VPCGatewayAttachment
+    DependsOn: HAPVPCGatewayAttachment
     Properties:
       RouteTableId: !Ref RouteTablePublicSubnet1
       DestinationCidrBlock: '0.0.0.0/0'
       GatewayId: !Ref InternetGateway
   RouteTablePublicSubnet2InternetRoute:
     Type: 'AWS::EC2::Route'
-    DependsOn: VPCGatewayAttachment
+    DependsOn: HAPVPCGatewayAttachment
     Properties:
       RouteTableId: !Ref RouteTablePublicSubnet2
       DestinationCidrBlock: '0.0.0.0/0'
       GatewayId: !Ref InternetGateway
   RouteTablePublicSubnet3InternetRoute:
     Type: 'AWS::EC2::Route'
-    DependsOn: VPCGatewayAttachment
+    DependsOn: HAPVPCGatewayAttachment
     Properties:
       RouteTableId: !Ref RouteTablePublicSubnet3
       DestinationCidrBlock: '0.0.0.0/0'
@@ -134,7 +193,7 @@ Resources:
   NetworkAclPublic:
     Type: 'AWS::EC2::NetworkAcl'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
   SubnetNetworkAclAssociationPublicSubnet1:
     Type: 'AWS::EC2::SubnetNetworkAclAssociation'
     Properties:
@@ -169,45 +228,12 @@ Resources:
       Egress: true
       CidrBlock: '0.0.0.0/0'
 
-
-  EMRSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: EMRSecurityGroup
-      GroupDescription: Enable SSH access via port 22
-      VpcId: !Ref VPC
-  
-  EMRSecurityGroupIngress:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:        
-        IpProtocol: "tcp"
-        CidrIp: "0.0.0.0/0"
-        FromPort: 22
-        ToPort: 22  
-        GroupId: !Ref EMRSecurityGroup
-
-  EMRSecurityGroupIngress1:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:        
-        IpProtocol: "tcp"
-        FromPort: 0
-        ToPort: 65535
-        SourceSecurityGroupId: !Ref EMRSecurityGroup
-        GroupId: !Ref EMRSecurityGroup
-
-  EMRSecurityGroupEgress:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      IpProtocol: -1
-      CidrIp: 0.0.0.0/0
-      GroupId: !Ref EMRSecurityGroup        
-
   WorkshopSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: WorkshopSecurityGroup
       GroupDescription: Enable SSH access via port 22
-      VpcId: !Ref VPC
+      VpcId: !Ref HAPVPC
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
@@ -248,8 +274,6 @@ Resources:
           CidrIp: "0.0.0.0/0"
           FromPort: 53
           ToPort: 53
-        - IpProtocol: -1
-          SourceSecurityGroupId: !Ref EMRSecurityGroup     
       
   WorkShopGroupInternalIngress:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -257,45 +281,50 @@ Resources:
       IpProtocol: -1
       SourceSecurityGroupId: !GetAtt WorkshopSecurityGroup.GroupId     
       GroupId: !GetAtt WorkshopSecurityGroup.GroupId     
- 
 
-  S3VPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
+  HAProxyEC2Instance:
+    Type: AWS::EC2::Instance
     Properties:
-      PolicyDocument: {
-            "Statement":[{
-                "Effect":"Allow",
-                "Principal": "*",
-                "Action":"*",
-                "Resource":"*"
-            }]
-        }
-      RouteTableIds:
-        - !Ref RouteTablePublicSubnet1
-        - !Ref RouteTablePublicSubnet2
-        - !Ref RouteTablePublicSubnet3
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
-      VpcEndpointType: Gateway
-      VpcId: !Ref VPC
-
-  GlueVPCEndpoint:    
-    Type: 'AWS::EC2::VPCEndpoint'
-    Properties:
-      PrivateDnsEnabled: true
-      SecurityGroupIds: [!Ref WorkshopSecurityGroup]
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.glue'
-      SubnetIds: 
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-        - !Ref PublicSubnet3
-      VpcEndpointType: Interface
-      VpcId: !Ref VPC
+      InstanceType: !Ref EC2ClientInstanceType
+      KeyName: !Ref KeyName
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Join:
+          - "-"
+          - - Ref: AWS::StackName
+            - HAProxyEC2Instance
+      ImageId:
+        Fn::FindInMap:
+        - RegionMap
+        - !Ref AWS::Region
+        - EC2AMI     
+      NetworkInterfaces:
+      - AssociatePublicIpAddress: 'true'
+        DeleteOnTermination: 'true'
+        DeviceIndex: 0
+        SubnetId: !Ref PublicSubnet2
+        GroupSet:
+        - Ref: WorkshopSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum -y install haproxy
+          yum -y install git wget bind-utils
+          cd /home/ec2-user
+          git clone https://github.com/jphaugla/redisAthenaQuickSight.git
+          cp -p redisAthenaQuickSite/haproxy.cfg /etc/haproxy
+          echo "            server srv0 ${RedisDatabase} check port ${RedisPORT} resolvers mydns init-addr none" >> /etc/haproxy/haproxy.cfg
+          chown -R ec2-user:ec2:user redisAthenaQuickSight
+          systemctl start haproxy
+          systemctl enable haproxy
 
 Outputs:
 
   VpcId:
       Description: 'VPC Id'
-      Value: !Ref VPC
+      Value: !Ref HAPVPC
 
   PublicSubnet1Id:
       Description: 'Public Subnet 1'
@@ -312,7 +341,3 @@ Outputs:
   WorkshopSecurityGroup:
     Description: 'Security Group'
     Value: !Ref WorkshopSecurityGroup
-
-  EMRSecurityGroup:
-    Description: 'Security Group'
-    Value: !Ref EMRSecurityGroup 

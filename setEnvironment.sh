@@ -27,8 +27,18 @@ export CREATE_ALL=false
 #  controls if redis connector is created
 export CREATE_CONNECTOR=false
 #  ec2 instance type for Redis instances
-export EC2_INSTANCE_TYPE=r4.2xlarge
+export REDIS_EC2_INSTANCE_TYPE=r4.2xlarge
 #  key pair for redis ec2 instances
 export KEY_PAIR=${PREFIX}_${REGION}
 # number of instances between 1 and 3
 export NUMBER_INSTANCES=2
+# VPC Cidr Redis
+export REDIS_VPC_CIDR=10.1.0.0/16
+# VPC Cidr HAProxy
+export HAPROXY_VPC_CIDR=10.2.0.0/16
+# Cidr Client
+export CLIENT_VPC_CIDR=10.3.0.0/16
+# Create an HA Proxy VPC
+export CREATE_HA_PROXY=true
+#  Create Elastic IPs for fixed IPS on redis nodes
+export CREATE_ELASTIC_IPS=false
