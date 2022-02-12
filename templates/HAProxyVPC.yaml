@@ -282,7 +282,7 @@ Resources:
       SourceSecurityGroupId: !GetAtt WorkshopSecurityGroup.GroupId     
       GroupId: !GetAtt WorkshopSecurityGroup.GroupId     
 
-  HAProxyEC2Instance:
+  HAProxEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref EC2ClientInstanceType
@@ -293,7 +293,7 @@ Resources:
           Fn::Join:
           - "-"
           - - Ref: AWS::StackName
-            - HAProxyEC2Instance
+            - HAProxEC2Instance
       ImageId:
         Fn::FindInMap:
         - RegionMap
@@ -310,15 +310,15 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           yum update -y
-          yum -y install haproxy
+          amazon-linux-extras install redis6
+          amazon-linux-extras install haproxy2
           yum -y install git wget bind-utils
           cd /home/ec2-user
           git clone https://github.com/jphaugla/redisAthenaQuickSight.git
-          \cp -p redisAthenaQuickSight/haproxy.cfg /etc/haproxy
-          echo "            server srv0 ${RedisDatabase} check port ${RedisPORT} resolvers mydns init-addr none" >> /etc/haproxy/haproxy.cfg
+          \cp -p redisAthenaQuickSight/haproxy2.cfg /etc/haproxy2
+          echo "            server srv0 ${RedisDatabase}:${RedisPort} check port ${RedisPORT} resolvers mydns init-addr none" >> /etc/haproxy2/haproxy2.cfg
           chown -R ec2-user:ec2:user redisAthenaQuickSight
-          systemctl start haproxy
-          systemctl enable haproxy
+          systemctl enable haproxy2
 
 Outputs:
 

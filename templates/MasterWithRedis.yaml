@@ -448,13 +448,6 @@ Resources:
         - !Join ['', [ 'node2.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
         - !Join ['', [ 'node3.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
 
-  vpcPeeringConnection:
-    Type: 'AWS::EC2::VPCPeeringConnection'
-    Properties:
-      VpcId: !GetAtt VPCStack.Outputs.VpcId
-      PeerVpcId: !GetAtt HAVPCStack.Outputs.VpcId
-
-
   GlueDatabaseRedis:
     Type: AWS::Glue::Database
     Properties:

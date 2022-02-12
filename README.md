@@ -13,7 +13,11 @@ Demo integrating Redis Enterprise with Amazon Athena and Amazon QuickSight
 - [AWS Services Used](#aws-services-used)
 - [Technical Overview](#technical-overview)
 - [Instructions](#instructions)
+  - [Prepare repository working directory](prepare-repository-working-directory)
   - [Create Environment](#create-environment)
+  - [Run this query in athena](#run-this-query-in-athena)
+  - [Continue with the workshop](#continue-with-the-workshop)
+  - [Haproxy to Redis](#haproxy-to-redis)
 - [Cleaning up](#cleaning-up)
 
 
@@ -46,6 +50,7 @@ Initially started with a CloudFormation template from [Amazon Athena Workship](h
 * This RE EC2 resource has UserData entries to create the Redis Cluster, create a redis database, and load a very small amount of sample redis data using the github after also installing git
 * Two additional nodes are added to the cluster to make it a three node cluster
 * The redis connector is also in a nested cloudformation script called *RedisConnector.yaml*.  This connector allows athena to access Redis.
+# Optional additional *HAProxyVPC.yaml*.  This allows an HA proxy in a separate VPC to reach to the redis installation in the main VPC
 
 &nbsp;
 
@@ -59,7 +64,7 @@ Initially started with a CloudFormation template from [Amazon Athena Workship](h
 
 &nbsp;
 
-### Prepare the repository working directory
+### Prepare repository working directory
 * Clone the repository
 ```bash
 git clone https://github.com/jphaugla/redisAthenaQuickSight.git
@@ -109,5 +114,19 @@ sudo bash
 * The [Labs - Athena Basics](https://athena-in-action.workshop.aws/30-basics.html) section does not use the Redis connector but does have the section on "Visualize with QuickSight".  
 * The important part for the Redis Connector is [Labs - Federated Queries](https://athena-in-action.workshop.aws/40-federatedquery.html).  
 
+### HaProxy to redis
+* to create the HAProxy, set environment variable CREATE_HA_PROXY to true
+* the installation of haproxy2 and the haproxy2.cfg file is taken care of in cloudformation
+* haproxy is not started however and will not work until the VPCs have been peered
+* Get the VPCID for the HAProxy VPC from the stack output for HAVPCStack.VpcId
+* Get the VPCID for the main VPC from the stack output for VPCStack.VpcId
+* Create the peering connection with the VPCStack.VpcId as the requester and the HAVPCStack.VpcId as teh accepter
+* Enable DNS routing for this peering.  [This link](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) is helpful.
+* Add routing table entries-easiest way to do this is the use the *Reachability Analyzer*
+	* select the haproxy instance as the source
+	* select redis vm1 instance as the target
+	* follow the recomndations to add the new routes to enable this connectivity
+* should now be able to from the haproxy node do a successful redis-cli connection  with no parameters
 ### Cleanup
+
 Also important is the [cleanup section](https://athena-in-action.workshop.aws/100-cleanups.html) as the cloudformation scripts can't delete some of the resources created.
