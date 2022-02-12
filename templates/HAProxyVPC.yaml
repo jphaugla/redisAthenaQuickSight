@@ -314,7 +314,7 @@ Resources:
           yum -y install git wget bind-utils
           cd /home/ec2-user
           git clone https://github.com/jphaugla/redisAthenaQuickSight.git
-          cp -p redisAthenaQuickSite/haproxy.cfg /etc/haproxy
+          \cp -p redisAthenaQuickSight/haproxy.cfg /etc/haproxy
           echo "            server srv0 ${RedisDatabase} check port ${RedisPORT} resolvers mydns init-addr none" >> /etc/haproxy/haproxy.cfg
           chown -R ec2-user:ec2:user redisAthenaQuickSight
           systemctl start haproxy
