@@ -51,7 +51,7 @@ Initially started with a CloudFormation template from [Amazon Athena Workship](h
 * Two additional nodes are added to the cluster to make it a three node cluster
 * The redis connector is also in a nested cloudformation script called *RedisConnector.yaml*.  This connector allows athena to access Redis.
 * Optional additional *HAProxyVPC.yaml*.  This allows an HA proxy in a separate VPC to reach to the redis installation in the main VPC.  Drawing and much of this work done by co-worker, Anton.
-![](/Users/jasonhaugland/gits/redisAthenaQuickSight/images/HAProxyschematic.png)
+![HAProxy schematic](./images/HAProxyschematic.png)
 &nbsp;
 
 ---
