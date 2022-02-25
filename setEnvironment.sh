@@ -39,6 +39,8 @@ export HAPROXY_VPC_CIDR=10.2.0.0/16
 # Cidr Client
 export CLIENT_VPC_CIDR=10.3.0.0/16
 # Create an HA Proxy VPC
-export CREATE_HA_PROXY=true
+export CREATE_HA_PROXY=false
 #  Create Elastic IPs for fixed IPS on redis nodes
-export CREATE_ELASTIC_IPS=false
+export CREATE_ELASTIC_IPS=true
+# flag to create redis nodes (leave false if have existing Redis cluster)
+export CREATE_REDIS=true

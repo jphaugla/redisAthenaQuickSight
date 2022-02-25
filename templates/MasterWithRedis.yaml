@@ -175,9 +175,22 @@ Conditions:
   Create-Two: !Equals [ !Ref NumberInstances, 2 ]
   Create-Three: !Equals [ !Ref NumberInstances, 3 ]
   Create-ElasticIps: !Equals [ !Ref UseRedisElasticIP, true ]
+  No-ElasticIps: !Equals [ !Ref UseRedisElasticIP, false ]
   Do-Two: !Or
     - !Condition Create-Two
     - !Condition Create-Three
+  Do-Two-Elastic: !And
+    - !Condition Do-Two
+    - !Condition Create-ElasticIps
+  Do-Two-No-Elastic: !And
+    - !Condition Do-Two
+    - !Condition No-ElasticIps
+  Do-Three-Elastic: !And
+    - !Condition Create-Three
+    - !Condition Create-ElasticIps
+  Do-Three-No-Elastic: !And
+    - !Condition Create-Three
+    - !Condition No-ElasticIps
 
 Resources:
   VPCStack:
@@ -235,6 +248,8 @@ Resources:
   RedisConnector:
     Type: 'AWS::CloudFormation::Stack'
     Condition: Create-Connector
+    DependsOn: 
+      - AWSRest
     Properties:
       TemplateURL: RedisConnector.yaml
       TimeoutInMinutes: 10
@@ -298,13 +313,11 @@ Resources:
              ./install.sh -y
 
   IPAddressVM2:
-    Condition: Do-Two
-    Condition: Create-ElasticIps
+    Condition: Do-Two-Elastic
     Type: AWS::EC2::EIP
 
   IPAssocVM2:
-    Condition: Do-Two
-    Condition: Create-ElasticIps
+    Condition: Do-Two-Elastic
     Type: AWS::EC2::EIPAssociation
     Properties:
       InstanceId: !Ref RedisEC2VM2
@@ -347,17 +360,15 @@ Resources:
              /opt/redislabs/bin/rladmin cluster join nodes ${RedisEC2VM1.PrivateIp} persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} external_addr $(dig +short myip.opendns.com @resolver1.opendns.com)
 
   IPAddressVM3:
-    Condition: Do-Three
-    Condition: Create-ElasticIps
+    Condition: Do-Three-Elastic
     Type: AWS::EC2::EIP
 
   IPAssocVM3:
-    Condition: Do-Three
-    Condition: Create-ElasticIps
+    Condition: Do-Three-Elastic
     Type: AWS::EC2::EIPAssociation
     Properties:
-      InstanceId: !Ref RedisEC2VM2
-      EIP: !Ref IPAddressVM2
+      InstanceId: !Ref RedisEC2VM3
+      EIP: !Ref IPAddressVM3
 
   RedisEC2VM3:
     Condition: Create-Three
@@ -395,42 +406,85 @@ Resources:
              sudo  bash -l
              /opt/redislabs/bin/rladmin cluster join nodes ${RedisEC2VM1.PrivateIp} persistent_path /var/opt/redislabs/persist  ephemeral_path /var/opt/redislabs/tmp  addr $(hostname -i) username ${ClusterUserName} password ${ClusterPassword} external_addr $(dig +short myip.opendns.com @resolver1.opendns.com)
 
-  RedisARecord1:
+  RedisARecord1E:
     Type: AWS::Route53::RecordSet
-    DependsOn: 
+    Condition: Create-ElasticIps
+    DependsOn:
+      - IPAddressVM1
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Comment: DNS name for my instance
+      Name: !Join ['',  ['node1.', !Ref ClusterName, ., !Ref HostedZoneName ] ]
+      Type: A
+      TTL: 900
+      ResourceRecords:
+        - !Ref IPAddressVM1
+
+  RedisARecord1N:
+    Type: AWS::Route53::RecordSet
+    Condition: No-ElasticIps
+    DependsOn:
       - RedisEC2VM1
     Properties:
       HostedZoneId: !Ref HostedZoneId
       Comment: DNS name for my instance
-      Name: !Join ['',  ['node1.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+      Name: !Join ['',  ['node1.', !Ref ClusterName, ., !Ref HostedZoneName ] ]
       Type: A
       TTL: 900
       ResourceRecords:
         - !GetAtt RedisEC2VM1.PublicIp
 
-  RedisARecord2:
-    Condition: Do-Two
+  RedisARecord2E:
+    Condition: Do-Two-Elastic
     Type: AWS::Route53::RecordSet
-    DependsOn: 
+    DependsOn:
+      - IPAddressVM2
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Comment: DNS name for my instance
+      Name: !Join ['',  ['node2.', !Ref ClusterName, ., !Ref HostedZoneName ] ]
+      Type: A
+      TTL: 900
+      ResourceRecords:
+        - !Ref IPAddressVM2
+
+  RedisARecord2N:
+    Condition: Do-Two-No-Elastic
+    Type: AWS::Route53::RecordSet
+    DependsOn:
       - RedisEC2VM2
     Properties:
       HostedZoneId: !Ref HostedZoneId
       Comment: DNS name for my instance
-      Name: !Join ['',  ['node2.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+      Name: !Join ['',  ['node2.', !Ref ClusterName, ., !Ref HostedZoneName ] ]
       Type: A
       TTL: 900
       ResourceRecords:
-        - !GetAtt RedisEC2VM2.PublicIp
+        - !GetAtt RedisEC2VM1.PublicIp
 
-  RedisARecord3:
-    Condition: Create-Three
+  RedisARecord3E:
+    Condition: Do-Three-Elastic
     Type: AWS::Route53::RecordSet
-    DependsOn: 
+    DependsOn:
+      - IPAddressVM3
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Comment: DNS name for my instance
+      Name: !Join ['',  ['node3.', !Ref ClusterName, ., !Ref HostedZoneName ] ]
+      Type: A
+      TTL: 900
+      ResourceRecords:
+        - !Ref IPAddressVM3
+
+  RedisARecord3N:
+    Condition: Do-Three-No-Elastic
+    Type: AWS::Route53::RecordSet
+    DependsOn:
       - RedisEC2VM3
     Properties:
       HostedZoneId: !Ref HostedZoneId
       Comment: DNS name for my instance
-      Name: !Join ['',  ['node3.', !Ref ClusterName, ., !Ref HostedZoneName ] ]  
+      Name: !Join ['',  ['node3.', !Ref ClusterName, ., !Ref HostedZoneName ] ]
       Type: A
       TTL: 900
       ResourceRecords:
@@ -567,9 +621,15 @@ Outputs:
     Description: 'The NS Record Name for Redis'
     Value: !Ref RedisNSRecord
 
-  RedisARecord1:
+  RedisARecord1E:
+    Condition: Create-ElasticIps
     Description: 'The A Record Name for Redis'
-    Value: !Ref RedisARecord1
+    Value: !Ref RedisARecord1E
+
+  RedisARecord1N:
+    Condition: No-ElasticIps
+    Description: 'The A Record Name for Redis'
+    Value: !Ref RedisARecord1N
 
   RedisPort:
     Description: 'The Port used for Redis Database'

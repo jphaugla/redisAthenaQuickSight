@@ -39,7 +39,7 @@ Resources:
     DeletionPolicy: Delete
     Properties:
       AccessControl: BucketOwnerFullControl
-      BucketName: !Join [ '-', [athena-federation-workshop, !Ref 'AWS::AccountId'] ]
+      BucketName: !Join [ '-', [athena-federation-workshop, !Ref 'AWS::AccountId', !Ref 'AWS::Region' ] ]
 
   V2EngineWorkGroup:
     Type: AWS::Athena::WorkGroup
