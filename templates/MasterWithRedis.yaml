@@ -308,8 +308,8 @@ Resources:
              cd /home/ec2-user
              mkdir rlec
              cd rlec
-             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.8/redislabs-6.2.8-53-rhel7-x86_64.tar
-             tar xvf redislabs-6.2.8-53-rhel7-x86_64.tar
+             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.12/redislabs-6.2.12-37-rhel7-x86_64.tar
+             tar xvf redislabs-6.2.12-37-rhel7-x86_64.tar
              ./install.sh -y
 
   IPAddressVM2:
@@ -352,8 +352,8 @@ Resources:
              cd /home/ec2-user
              mkdir rlec
              cd rlec
-             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.8/redislabs-6.2.8-53-rhel7-x86_64.tar
-             tar xvf redislabs-6.2.8-53-rhel7-x86_64.tar
+             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.12/redislabs-6.2.12-37-rhel7-x86_64.tar
+             tar xvf redislabs-6.2.12-37-rhel7-x86_64.tar
              /opt/redislabs/bin/rl_uninstall.sh
              ./install.sh -y --allow-same-version
              sudo  bash -l
@@ -399,8 +399,8 @@ Resources:
              cd /home/ec2-user
              mkdir rlec
              cd rlec
-             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.8/redislabs-6.2.8-53-rhel7-x86_64.tar
-             tar xvf redislabs-6.2.8-53-rhel7-x86_64.tar
+             wget https://s3.amazonaws.com/redis-enterprise-software-downloads/6.2.12/redislabs-6.2.12-37-rhel7-x86_64.tar
+             tar xvf redislabs-6.2.12-37-rhel7-x86_64.tar
              /opt/redislabs/bin/rl_uninstall.sh
              ./install.sh -y --allow-same-version
              sudo  bash -l
